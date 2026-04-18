@@ -4,6 +4,7 @@ import registro
 import clientes
 import ingresos
 import egresos
+import ver_ficha
 
 class AppPeluqueria(ctk.CTk):
     def __init__(self):
@@ -73,6 +74,12 @@ class AppPeluqueria(ctk.CTk):
     def show_egresos(self):
         self.clear_view()
         self.current_frame = egresos.EgresosFrame(self.main_view)
+        self.current_frame.pack(expand=True, fill="both")
+    
+    def cambiar_a_ficha(self, datos_cliente):
+        self.clear_view()
+        # Creamos el frame de la ficha pasando los datos
+        self.current_frame = ver_ficha.VerFichaFrame(self.main_view, cliente_datos=datos_cliente)
         self.current_frame.pack(expand=True, fill="both")
 
 if __name__ == "__main__":

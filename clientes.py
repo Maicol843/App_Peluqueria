@@ -227,6 +227,18 @@ class ClientesFrame(ctk.CTkFrame):
     def ver_ficha(self):
         seleccion = self.tabla.selection()
         if not seleccion:
-            messagebox.showwarning("Atención", "Seleccione un cliente.")
+            messagebox.showwarning("Atención", "Seleccione un cliente de la tabla.")
             return
-        print(f"Ficha del cliente ID: {seleccion[0]}")
+        
+        cliente_id = seleccion[0]
+        # Conectamos a la DB para traer los datos completos del cliente
+        import sqlite3
+        conn = sqlite3.connect("peluqueria.db")
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM clientes WHERE id=?", (cliente_id,))
+        datos = cur.fetchone()
+        conn.close()
+
+        # Esta línea es la que hace la magia de cambiar la pantalla
+        # self.master es main_view, self.master.master es AppPeluqueria
+        self.master.master.cambiar_a_ficha(datos)

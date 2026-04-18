@@ -71,5 +71,63 @@ def eliminar_todos_los_clientes():
     conexion.commit()
     conexion.close()
 
+def crear_tabla_servicios():
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS servicios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente_id INTEGER,
+            fecha TEXT NOT NULL,
+            servicio TEXT NOT NULL,
+            precio REAL NOT NULL,
+            FOREIGN KEY (cliente_id) REFERENCES clientes (id)
+        )
+    ''')
+    conexion.commit()
+    conexion.close()
+
+def registrar_servicio(cliente_id, fecha, servicio, precio):
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    cursor.execute("INSERT INTO servicios (cliente_id, fecha, servicio, precio) VALUES (?, ?, ?, ?)",
+                   (cliente_id, fecha, servicio, precio))
+    conexion.commit()
+    conexion.close()
+
+def obtener_servicios(cliente_id, busqueda=""):
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    if busqueda:
+        cursor.execute("SELECT * FROM servicios WHERE cliente_id = ? AND servicio LIKE ?", (cliente_id, f"%{busqueda}%"))
+    else:
+        cursor.execute("SELECT * FROM servicios WHERE cliente_id = ?", (cliente_id,))
+    datos = cursor.fetchall()
+    conexion.close()
+    return datos
+
+def actualizar_servicio(id_ser, fecha, servicio, precio):
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    cursor.execute("UPDATE servicios SET fecha=?, servicio=?, precio=? WHERE id=?", (fecha, servicio, precio, id_ser))
+    conexion.commit()
+    conexion.close()
+
+def eliminar_servicio(id_ser):
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    cursor.execute("DELETE FROM servicios WHERE id=?", (id_ser,))
+    conexion.commit()
+    conexion.close()
+
+def eliminar_servicios_cliente(cliente_id):
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    cursor.execute("DELETE FROM servicios WHERE cliente_id=?", (cliente_id,))
+    conexion.commit()
+    conexion.close()
+
+
 # Ejecutar la creación al importar
 crear_base_de_datos()
+crear_tabla_servicios()
