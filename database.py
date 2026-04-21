@@ -127,8 +127,6 @@ def eliminar_servicios_cliente(cliente_id):
     conexion.commit()
     conexion.close()
 
-# --- FUNCIÓN DE BÚSQUEDA AVANZADA (CORREGIDA) ---
-
 def buscar_clientes_servicios(texto="", dias=None):
     conexion = sqlite3.connect("peluqueria.db")
     cursor = conexion.cursor()
@@ -157,6 +155,54 @@ def buscar_clientes_servicios(texto="", dias=None):
     datos = cursor.fetchall()
     conexion.close()
     return datos
+
+def obtener_ingresos_filtrados(servicio="", desde=None, hasta=None):
+    import sqlite3
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    
+    # Query base: Buscamos por servicio (el primer ?)
+    query = "SELECT id, fecha, servicio, precio FROM servicios WHERE servicio LIKE ?"
+    params = [f"%{servicio}%"]
+
+    # Filtro por rango de fecha
+    if desde and hasta:
+        # Cada '?' requiere un valor en la lista params. 
+        # Como usamos substr 3 veces para 'desde' y 3 veces para 'hasta', 
+        # debemos pasar las variables 3 veces cada una.
+        query += """ AND date(substr(fecha,7,4) || '-' || substr(fecha,4,2) || '-' || substr(fecha,1,2)) 
+                     BETWEEN date(substr(?,7,4) || '-' || substr(?,4,2) || '-' || substr(?,1,2)) 
+                     AND date(substr(?,7,4) || '-' || substr(?,4,2) || '-' || substr(?,1,2)) """
+        
+        # Agregamos 'desde' 3 veces y 'hasta' 3 veces para llenar los 6 signos '?' del BETWEEN
+        params.extend([desde, desde, desde, hasta, hasta, hasta])
+    
+    # Ordenar por fecha reciente
+    query += " ORDER BY substr(fecha,7,4) DESC, substr(fecha,4,2) DESC, substr(fecha,1,2) DESC"
+    
+    cursor.execute(query, params)
+    datos = cursor.fetchall()
+    conexion.close()
+    return datos
+
+def obtener_total_ingresos(servicio="", desde=None, hasta=None):
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    
+    query = "SELECT SUM(precio) FROM servicios WHERE servicio LIKE ?"
+    params = [f"%{servicio}%"]
+
+    if desde and hasta:
+        query += """ AND date(substr(fecha,7,4) || '-' || substr(fecha,4,2) || '-' || substr(fecha,1,2)) 
+                     BETWEEN date(substr(?,7,4) || '-' || substr(?,4,2) || '-' || substr(?,1,2)) 
+                     AND date(substr(?,7,4) || '-' || substr(?,4,2) || '-' || substr(?,1,2)) """
+        params.extend([desde, desde, desde, hasta, hasta, hasta])
+    
+    cursor.execute(query, params)
+    total = cursor.fetchone()[0]
+    conexion.close()
+    
+    return total if total else 0.0
 
 # Inicialización automática al importar el archivo
 crear_base_de_datos()
