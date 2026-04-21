@@ -14,6 +14,11 @@ import ver_ficha
 class InicioFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
+
+        # Variables para paginación de servicios
+        self.servicios_completos = []
+        self.pagina_actual = 0
+        self.items_por_pagina = 10
         
         # 1. Título principal
         ctk.CTkLabel(
@@ -62,6 +67,19 @@ class InicioFrame(ctk.CTkFrame):
         self.tabla_servicios.column("Cantidad", width=100, anchor="center")
         self.tabla_servicios.pack(expand=True, fill="both")
 
+        # Controles de Paginación
+        self.frame_paginacion = ctk.CTkFrame(self.frame_tabla, fg_color="transparent")
+        self.frame_paginacion.pack(pady=10)
+
+        self.btn_prev = ctk.CTkButton(self.frame_paginacion, text="<", width=40, command=self.pagina_anterior)
+        self.btn_prev.grid(row=0, column=0, padx=5)
+
+        self.lbl_pagina = ctk.CTkLabel(self.frame_paginacion, text="Página 1")
+        self.lbl_pagina.grid(row=0, column=1, padx=10)
+
+        self.btn_next = ctk.CTkButton(self.frame_paginacion, text=">", width=40, command=self.pagina_siguiente)
+        self.btn_next.grid(row=0, column=2, padx=5)
+
         self.cargar_servicios_mes()
 
         # --- COLUMNA DERECHA: Avisos de Cumpleaños ---
@@ -98,14 +116,39 @@ class InicioFrame(ctk.CTkFrame):
         btn.grid(row=0, column=columna, padx=10, pady=10)
 
     def cargar_servicios_mes(self):
-        # Limpiar tabla antes de cargar
+        # Guardamos todos los datos una sola vez
+        self.servicios_completos = database.obtener_servicios_populares_mes()
+        self.actualizar_tabla_paginada()
+
+    def actualizar_tabla_paginada(self):
+        # Limpiar tabla
         for i in self.tabla_servicios.get_children():
             self.tabla_servicios.delete(i)
         
-        # Obtener datos de database.py
-        datos = database.obtener_servicios_populares_mes()
-        for srv, cant in datos:
+        # Calcular índices
+        inicio = self.pagina_actual * self.items_por_pagina
+        fin = inicio + self.items_por_pagina
+        bloque = self.servicios_completos[inicio:fin]
+
+        for srv, cant in bloque:
             self.tabla_servicios.insert("", "end", values=(srv, cant))
+        
+        # Actualizar etiqueta y botones
+        total_paginas = (len(self.servicios_completos) - 1) // self.items_por_pagina + 1 if self.servicios_completos else 1
+        self.lbl_pagina.configure(text=f"Página {self.pagina_actual + 1} de {total_paginas}")
+        
+        self.btn_prev.configure(state="normal" if self.pagina_actual > 0 else "disabled")
+        self.btn_next.configure(state="normal" if fin < len(self.servicios_completos) else "disabled")
+
+    def pagina_anterior(self):
+        if self.pagina_actual > 0:
+            self.pagina_actual -= 1
+            self.actualizar_tabla_paginada()
+
+    def pagina_siguiente(self):
+        if (self.pagina_actual + 1) * self.items_por_pagina < len(self.servicios_completos):
+            self.pagina_actual += 1
+            self.actualizar_tabla_paginada()
 
     def mostrar_cumpleanios(self):
         self.txt_cumple.configure(state="normal")
