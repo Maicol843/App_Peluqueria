@@ -204,5 +204,87 @@ def obtener_total_ingresos(servicio="", desde=None, hasta=None):
     
     return total if total else 0.0
 
+def crear_tabla_egresos():
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS egresos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha TEXT NOT NULL,
+            detalle TEXT NOT NULL,
+            importe REAL NOT NULL
+        )
+    ''')
+    conexion.commit()
+    conexion.close()
+
+def registrar_egreso(fecha, detalle, importe):
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    cursor.execute("INSERT INTO egresos (fecha, detalle, importe) VALUES (?, ?, ?)", (fecha, detalle, importe))
+    conexion.commit()
+    conexion.close()
+
+def obtener_egresos_filtrados(detalle="", desde=None, hasta=None):
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    query = "SELECT id, fecha, detalle, importe FROM egresos WHERE detalle LIKE ?"
+    params = [f"%{detalle}%"]
+    if desde and hasta:
+        query += """ AND date(substr(fecha,7,4) || '-' || substr(fecha,4,2) || '-' || substr(fecha,1,2)) 
+                     BETWEEN date(substr(?,7,4) || '-' || substr(?,4,2) || '-' || substr(?,1,2)) 
+                     AND date(substr(?,7,4) || '-' || substr(?,4,2) || '-' || substr(?,1,2)) """
+        params.extend([desde, desde, desde, hasta, hasta, hasta])
+    query += " ORDER BY substr(fecha,7,4) DESC, substr(fecha,4,2) DESC, substr(fecha,1,2) DESC"
+    cursor.execute(query, params)
+    datos = cursor.fetchall()
+    conexion.close()
+    return datos
+
+def obtener_total_egresos(detalle="", desde=None, hasta=None):
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    query = "SELECT SUM(importe) FROM egresos WHERE detalle LIKE ?"
+    params = [f"%{detalle}%"]
+    if desde and hasta:
+        query += """ AND date(substr(fecha,7,4) || '-' || substr(fecha,4,2) || '-' || substr(fecha,1,2)) 
+                     BETWEEN date(substr(?,7,4) || '-' || substr(?,4,2) || '-' || substr(?,1,2)) 
+                     AND date(substr(?,7,4) || '-' || substr(?,4,2) || '-' || substr(?,1,2)) """
+        params.extend([desde, desde, desde, hasta, hasta, hasta])
+    cursor.execute(query, params)
+    total = cursor.fetchone()[0]
+    conexion.close()
+    return total if total else 0.0
+
+def actualizar_egreso(id_egreso, fecha, detalle, importe):
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    cursor.execute("UPDATE egresos SET fecha=?, detalle=?, importe=? WHERE id=?", (fecha, detalle, importe, id_egreso))
+    conexion.commit()
+    conexion.close()
+
+def eliminar_egreso(id_egreso):
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    cursor.execute("DELETE FROM egresos WHERE id=?", (id_egreso,))
+    conexion.commit()
+    conexion.close()
+
+def restablecer_egresos():
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    cursor.execute("DELETE FROM egresos")
+    conexion.commit()
+    conexion.close()
+
+def obtener_egresos_grafica():
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    # Obtenemos fecha e importe para procesar en Python
+    cursor.execute("SELECT fecha, importe FROM egresos")
+    datos = cursor.fetchall()
+    conexion.close()
+    return datos
+
 # Inicialización automática al importar el archivo
 crear_base_de_datos()

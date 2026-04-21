@@ -56,7 +56,7 @@ class IngresosFrame(ctk.CTkFrame):
 
         # --- TABLA ---
         self.tabla = ttk.Treeview(self, columns=("num", "fec", "ser", "ing"), show='headings')
-        self.tabla.heading("num", text="№")
+        self.tabla.heading("num", text="Nro.")
         self.tabla.heading("fec", text="Fecha")
         self.tabla.heading("ser", text="Servicio")
         self.tabla.heading("ing", text="Ingreso ($)")
@@ -196,7 +196,7 @@ class IngresosFrame(ctk.CTkFrame):
             f_desde, f_hasta = self.obtener_filtros_fechas()
             datos_db = database.obtener_ingresos_filtrados(self.search_ser.get(), f_desde, f_hasta)
             
-            data_tabla = [["№", "Fecha", "Servicio", "Ingreso"]]
+            data_tabla = [["Nro.", "Fecha", "Servicio", "Ingreso"]]
             for i, r in enumerate(datos_db, 1):
                 data_tabla.append([i, r[1], r[2], f"${r[3]:.2f}"])
             
