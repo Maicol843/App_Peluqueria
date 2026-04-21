@@ -2,6 +2,7 @@ import customtkinter as ctk
 # Importamos los otros archivos (los crearemos a continuación)
 import registro
 import clientes
+import buscar
 import ingresos
 import egresos
 import ver_ficha
@@ -34,6 +35,9 @@ class AppPeluqueria(ctk.CTk):
         self.btn_clientes = ctk.CTkButton(self.navigation_frame, text="Clientes", command=self.show_clientes)
         self.btn_clientes.grid(row=3, column=0, padx=20, pady=10)
 
+        self.btn_buscar = ctk.CTkButton(self.navigation_frame, text="Buscar", command=self.show_buscar)
+        self.btn_buscar.grid(row=6, column=0, padx=20, pady=10)
+
         self.btn_ingresos = ctk.CTkButton(self.navigation_frame, text="Ingresos", command=self.show_ingresos)
         self.btn_ingresos.grid(row=4, column=0, padx=20, pady=10)
 
@@ -64,6 +68,11 @@ class AppPeluqueria(ctk.CTk):
     def show_clientes(self):
         self.clear_view()
         self.current_frame = clientes.ClientesFrame(self.main_view)
+        self.current_frame.pack(expand=True, fill="both")
+
+    def show_buscar(self):
+        self.clear_view()
+        self.current_frame = buscar.BuscarFrame(self.main_view)
         self.current_frame.pack(expand=True, fill="both")
 
     def show_ingresos(self):

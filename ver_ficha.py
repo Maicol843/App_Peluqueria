@@ -48,7 +48,7 @@ class VerFichaFrame(ctk.CTkFrame):
         style.configure("Ficha.Treeview.Heading", font=("Arial", 13, "bold"))
         
         self.tabla = ttk.Treeview(self, columns=("num", "fec", "ser", "pre"), show='headings', style="Ficha.Treeview")
-        self.tabla.heading("num", text="№")
+        self.tabla.heading("num", text="Nro.")
         self.tabla.heading("fec", text="Fecha")
         self.tabla.heading("ser", text="Servicio")
         self.tabla.heading("pre", text="Precio ($)")
