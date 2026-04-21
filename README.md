@@ -14,7 +14,7 @@
 
 ## 🛠️ Tecnologías Utilizadas
 
-* **Lenguaje:** Python 3.x
+* **Lenguaje:** Python 3.14
 * **Interfaz Gráfica (GUI):** [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) (para un diseño moderno y modo oscuro/claro).
 * **Base de Datos:** SQLite3 (base de datos relacional local).
 * **Reportes:** ReportLab (generación de documentos PDF).
