@@ -1,3 +1,4 @@
+import os
 import customtkinter as ctk
 from tkinter import ttk
 import database
@@ -14,6 +15,12 @@ import ver_ficha
 class InicioFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
+
+        # --- ESTA ES LA LÍNEA PARA EL ICONO DE VENTANA ---
+        try:
+            self.iconbitmap("logo.ico")
+        except:
+            pass # Si no encuentra el icono, el programa abre igual con el default
 
         # Variables para paginación de servicios
         self.servicios_completos = []
@@ -170,6 +177,25 @@ class AppPeluqueria(ctk.CTk):
 
         self.title("Sistema de Gestión - Peluquería")
         self.geometry("1200x700")
+
+        # 1. Intentar cargar el icono para la ventana
+        try:
+            self.iconbitmap("logo.ico")
+        except:
+            pass
+
+        # 2. Cargar el icono para los botones del menú
+        # Usamos CTkImage para que se vea bien en cualquier resolución
+        try:
+            # Puedes usar "logo.png" o convertir el "logo.ico" con una librería como PIL
+            from PIL import Image
+            self.logo_menu = ctk.CTkImage(
+                light_image=Image.open("logo.ico"), # O logo.png si lo prefieres
+                dark_image=Image.open("logo.ico"),
+                size=(20, 20) # Tamaño del icono dentro del botón
+            )
+        except:
+            self.logo_menu = None # Si falla la carga, los botones se crean sin imagen
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
