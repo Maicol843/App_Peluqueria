@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 def crear_base_de_datos():
     conexion = sqlite3.connect("peluqueria.db")
@@ -285,6 +286,72 @@ def obtener_egresos_grafica():
     datos = cursor.fetchall()
     conexion.close()
     return datos
+
+def obtener_resumen_inicio():
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    
+    # Total de clientes
+    cursor.execute("SELECT COUNT(*) FROM clientes")
+    t_cli = cursor.fetchone()[0] or 0
+    
+    # Total de ingresos (Suma de columna precio en tabla servicios)
+    cursor.execute("SELECT SUM(precio) FROM servicios")
+    t_ing = cursor.fetchone()[0] or 0.0
+    
+    # Total de egresos (Suma de columna importe en tabla egresos)
+    try:
+        cursor.execute("SELECT SUM(importe) FROM egresos")
+        t_egr = cursor.fetchone()[0] or 0.0
+    except sqlite3.OperationalError:
+        t_egr = 0.0  # Por si la tabla egresos aún no existe
+        
+    # Servicios del mes actual
+    from datetime import datetime
+    mes_actual = datetime.now().strftime("%m/%Y")
+    cursor.execute("SELECT COUNT(*) FROM servicios WHERE fecha LIKE ?", (f"%{mes_actual}%",))
+    s_mes = cursor.fetchone()[0] or 0
+    
+    conexion.close()
+    return t_cli, t_ing, t_egr, s_mes
+
+def obtener_servicios_populares_mes():
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    # Obtenemos el mes y año actual para filtrar
+    mes_actual = datetime.now().strftime("%m")
+    anio_actual = datetime.now().strftime("%Y")
+    
+    cursor.execute("""
+        SELECT servicio, COUNT(*) as cantidad 
+        FROM servicios 
+        WHERE substr(fecha, 4, 2) = ? AND substr(fecha, 7, 4) = ?
+        GROUP BY servicio 
+        ORDER BY cantidad DESC
+    """, (mes_actual, anio_actual))
+    
+    datos = cursor.fetchall()
+    conexion.close()
+    return datos
+
+def obtener_cumpleanios_hoy():
+    conexion = sqlite3.connect("peluqueria.db")
+    cursor = conexion.cursor()
+    # Formato dd/mm para comparar con la fecha de nacimiento
+    hoy = datetime.now().strftime("%d/%m")
+    
+    cursor.execute("SELECT nombre, apellido, fecha_nacimiento FROM clientes")
+    todos = cursor.fetchall()
+    
+    cumpleaneros = []
+    for c in todos:
+        # c[2] es la fecha de nacimiento (dd/mm/aaaa)
+        # Extraemos solo el dd/mm (los primeros 5 caracteres)
+        if c[2][:5] == hoy:
+            cumpleaneros.append((c[0], c[1]))
+            
+    conexion.close()
+    return cumpleaneros
 
 # Inicialización automática al importar el archivo
 crear_base_de_datos()
