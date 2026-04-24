@@ -164,34 +164,46 @@ class VerFichaFrame(ctk.CTkFrame):
             elementos = []
             estilos = getSampleStyleSheet()
             
-            # Estilos personalizados para centrar y espaciar
+            # Estilos personalizados
             estilo_titulo = ParagraphStyle('TituloPDF', parent=estilos['Title'], alignment=TA_CENTER, spaceAfter=10)
             estilo_subtitulo = ParagraphStyle('SubPDF', parent=estilos['Normal'], alignment=TA_CENTER, fontSize=14, spaceAfter=5, fontName='Helvetica-Bold')
             estilo_datos = ParagraphStyle('DatosPDF', parent=estilos['Normal'], alignment=TA_CENTER, fontSize=11, spaceAfter=20)
+            
+            # Estilo para las celdas de la tabla (permite ajuste de línea)
+            estilo_celda = ParagraphStyle('CeldaTabla', parent=estilos['Normal'], alignment=TA_CENTER, fontSize=10)
+            estilo_celda.wordWrap = 'CJK' # Permite que el texto largo salte de línea
 
-            # 1. TÍTULOS Y CABECERA (Según lo solicitado)
+            # 1. TÍTULOS Y CABECERA
             elementos.append(Paragraph("Historial de Servicios", estilo_titulo))
             elementos.append(Paragraph(f"{self.cliente[1]} {self.cliente[2]}", estilo_subtitulo))
             
-            # Línea de contacto: Fecha | Email | Teléfono
             linea_contacto = f"{self.cliente[3]}  |  {self.cliente[4]}  |  {self.cliente[5]}"
             elementos.append(Paragraph(linea_contacto, estilo_datos))
-            elementos.append(Spacer(1, 10))
             
             # 2. TABLA DE SERVICIOS
-            datos_tabla = [["Nro.", "Fecha", "Servicio", "Precio"]]
+            # Encabezados envueltos en Paragraph para consistencia
+            encabezados = ["Nro.", "Fecha", "Servicio", "Precio"]
+            datos_tabla = [[Paragraph(f"<b>{h}</b>", estilo_celda) for h in encabezados]]
+            
             servicios = database.obtener_servicios(self.cliente[0])
             for i, s in enumerate(servicios, 1):
-                datos_tabla.append([i, s[2], s[3], f"${s[4]:.2f}"])
+                # s[2]=fecha, s[3]=servicio, s[4]=precio
+                datos_tabla.append([
+                    Paragraph(str(i), estilo_celda),
+                    Paragraph(str(s[2]), estilo_celda),
+                    Paragraph(str(s[3]), estilo_celda), # El servicio ahora se ajustará al ancho
+                    Paragraph(f"${s[4]:.2f}", estilo_celda)
+                ])
             
-            t = Table(datos_tabla, colWidths=[30, 90, 260, 90])
+            # Definición de anchos de columna
+            t = Table(datos_tabla, colWidths=[35, 90, 255, 90])
+            
             t.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#333333")),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#20c997")),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), # Centrado vertical importante para multilínea
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('BACKGROUND', (0, 1), (-1, -1), colors.white),
             ]))
             elementos.append(t)
