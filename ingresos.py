@@ -187,28 +187,67 @@ class IngresosFrame(ctk.CTkFrame):
     def generar_pdf_ingresos(self):
         path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
         if not path: return
+        
         try:
             doc = SimpleDocTemplate(path, pagesize=A4)
             estilos = getSampleStyleSheet()
+            
+            # Estilos
             estilo_titulo = ParagraphStyle('Title', parent=estilos['Title'], alignment=TA_CENTER)
-            elementos = [Paragraph("Ingresos", estilo_titulo), Spacer(1, 20)]
+            estilo_celda = ParagraphStyle('CeldaNormal', parent=estilos['Normal'], fontSize=10, alignment=TA_CENTER)
+            estilo_celda.wordWrap = 'CJK'
+            
+            # Estilo especial para la fila del Total
+            estilo_total = ParagraphStyle('TotalStyle', parent=estilos['Normal'], fontSize=11, alignment=TA_CENTER)
+
+            elementos = [Paragraph("Reporte de Ingresos", estilo_titulo)]
             
             f_desde, f_hasta = self.obtener_filtros_fechas()
             datos_db = database.obtener_ingresos_filtrados(self.search_ser.get(), f_desde, f_hasta)
             
-            data_tabla = [["Nro.", "Fecha", "Servicio", "Ingreso"]]
+            # Encabezados
+            encabezados = ["Nro.", "Fecha", "Servicio", "Ingreso"]
+            data_tabla = [[Paragraph(h, estilos['Helvetica-Bold'] if 'Helvetica-Bold' in estilos else estilos['Normal']) for h in encabezados]]
+            
+            total_acumulado = 0 # Variable para sumar los ingresos
+
             for i, r in enumerate(datos_db, 1):
-                data_tabla.append([i, r[1], r[2], f"${r[3]:.2f}"])
+                # r[1]=fecha, r[2]=servicio, r[3]=precio
+                precio = r[3] if r[3] else 0
+                total_acumulado += precio # Sumamos al total
+                
+                data_tabla.append([
+                    Paragraph(str(i), estilo_celda),
+                    Paragraph(str(r[1]), estilo_celda),
+                    Paragraph(str(r[2]), estilo_celda),
+                    Paragraph(f"${precio:.2f}", estilo_celda)
+                ])
+            
+            # --- FILA DE TOTAL ---
+            # Dejamos vacías las primeras dos columnas y ponemos el texto "TOTAL" y la suma
+            data_tabla.append([
+                "", 
+                "", 
+                Paragraph("<b>TOTAL:</b>", estilo_total), 
+                Paragraph(f"<b>${total_acumulado:.2f}</b>", estilo_total)
+            ])
             
             t = Table(data_tabla, colWidths=[40, 100, 280, 80])
+            
             t.setStyle(TableStyle([
-                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#2c3e50")),
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#198754")),
                 ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
                 ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
                 ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+                # Estilo para la última fila (el Total)
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor("#ecf0f1")),
+                ('LINEABOVE', (2, -1), (-1, -1), 1.5, colors.black), # Línea más gruesa sobre el total
             ]))
+            
             elementos.append(t)
             doc.build(elementos)
-            messagebox.showinfo("Éxito", "PDF generado correctamente")
+            messagebox.showinfo("Éxito", "PDF generado correctamente con el total acumulado.")
+            
         except Exception as e:
-            messagebox.showerror("Error", f"Error: {e}")
+            messagebox.showerror("Error", f"No se pudo generar el PDF: {e}")

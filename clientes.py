@@ -197,29 +197,51 @@ class ClientesFrame(ctk.CTkFrame):
             doc = SimpleDocTemplate(path, pagesize=A4)
             elementos = []
             estilos = getSampleStyleSheet()
+            
+            # Definimos un estilo personalizado para el texto de las celdas
+            estilo_celda = estilos["Normal"]
+            estilo_celda.fontSize = 9
+            estilo_celda.alignment = 1  # 0=Izquierda, 1=Centro, 2=Derecha
+            # Esta es la clave: permite que las palabras largas se rompan si es necesario
+            estilo_celda.wordWrap = 'CJK' 
+
             titulo = Paragraph("LISTADO DE CLIENTES - PELUQUERÍA", estilos['Title'])
             elementos.append(titulo)
             
             encabezados = ["Nro.", "Nombre", "Apellido", "F. Nacimiento", "Email", "Teléfono"]
-            datos_pdf = [encabezados]
+            # Convertimos encabezados a Paragraph para mantener consistencia
+            datos_pdf = [[Paragraph(h, estilos["Helvetica-Bold"] if "Helvetica-Bold" in estilos else estilos["Normal"]) for h in encabezados]]
             
-            clientes = database.obtener_clientes()
-            for i, cl in enumerate(clientes, 1):
-                datos_pdf.append([i, cl[1], cl[2], cl[3], cl[4], cl[5]])
+            # Nota: Asegúrate de pasar el argumento de búsqueda si tu database.obtener_clientes lo requiere
+            clientes_db = database.obtener_clientes("") 
             
-            tabla_pdf = Table(datos_pdf, colWidths=[30, 90, 90, 80, 150, 80])
+            for i, cl in enumerate(clientes_db, 1):
+                # Convertimos cada dato en un Paragraph para que tenga "Word Wrap" (ajuste de línea)
+                datos_pdf.append([
+                    Paragraph(str(i), estilo_celda),
+                    Paragraph(str(cl[1]), estilo_celda),
+                    Paragraph(str(cl[2]), estilo_celda),
+                    Paragraph(str(cl[3]), estilo_celda),
+                    Paragraph(str(cl[4]), estilo_celda), # El Email ahora saltará de línea
+                    Paragraph(str(cl[5]), estilo_celda)
+                ])
+            
+            # Ajustamos un poco los anchos: Email tiene 160 ahora
+            tabla_pdf = Table(datos_pdf, colWidths=[30, 80, 80, 80, 160, 80])
+            
             estilo_tabla = TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#333333")),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#0d6efd")),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), # Importante para celdas con varias líneas
                 ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#F3F3F3")),
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ])
+            
             tabla_pdf.setStyle(estilo_tabla)
             elementos.append(tabla_pdf)
             doc.build(elementos)
+            
             messagebox.showinfo("PDF", "Reporte generado correctamente.")
         except Exception as e:
             messagebox.showerror("Error PDF", f"No se pudo generar: {e}")

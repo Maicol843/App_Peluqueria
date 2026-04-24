@@ -222,21 +222,65 @@ class EgresosFrame(ctk.CTkFrame):
         try:
             doc = SimpleDocTemplate(path, pagesize=A4)
             est = getSampleStyleSheet()
+            
+            # Estilo para el título centrado
             t_est = ParagraphStyle('T', parent=est['Title'], alignment=TA_CENTER)
+            
+            # Estilo para el contenido de las celdas (evita que el texto se salga)
+            estilo_celda = ParagraphStyle('Celda', parent=est['Normal'], fontSize=10, alignment=TA_CENTER)
+            estilo_celda.wordWrap = 'CJK' # Clave para el ajuste de línea
+            
+            # Estilo para la fila del total
+            estilo_total = ParagraphStyle('Total', parent=est['Normal'], fontSize=11, alignment=TA_CENTER)
+
             f_d, f_h = self.obtener_filtros()
             datos_db = database.obtener_egresos_filtrados(self.search_det.get(), f_d, f_h)
-            total = database.obtener_total_egresos(self.search_det.get(), f_d, f_h)
-            data = [["Nro.", "Fecha", "Detalle", "Importe"]]
-            for i, r in enumerate(datos_db, 1): data.append([i, r[1], r[2], f"${r[3]:.2f}"])
-            data.append(["", "", "TOTAL:", f"${total:.2f}"])
+            
+            # Intentamos obtener el total desde la base de datos
+            try:
+                total_db = database.obtener_total_egresos(self.search_det.get(), f_d, f_h)
+            except:
+                # Si la función falla, calculamos el total manualmente por seguridad
+                total_db = sum(r[3] for r in datos_db if r[3])
+
+            # Encabezados con Paragraph
+            data = [[Paragraph(h, est['Helvetica-Bold'] if 'Helvetica-Bold' in est else est['Normal']) 
+                    for h in ["Nro.", "Fecha", "Detalle", "Importe"]]]
+            
+            # Llenar la tabla con Paragraphs
+            for i, r in enumerate(datos_db, 1):
+                data.append([
+                    Paragraph(str(i), estilo_celda),
+                    Paragraph(str(r[1]), estilo_celda),
+                    Paragraph(str(r[2]), estilo_celda), # El detalle ya no se saldrá de la celda
+                    Paragraph(f"${r[3]:.2f}", estilo_celda)
+                ])
+            
+            # --- AGREGAR FILA DE TOTAL ---
+            data.append([
+                "", 
+                "", 
+                Paragraph("<b>TOTAL:</b>", estilo_total), 
+                Paragraph(f"<b>${total_db:.2f}</b>", estilo_total)
+            ])
+            
+            # Definición de anchos: [Nro, Fecha, Detalle, Importe]
             tab = Table(data, colWidths=[40, 100, 280, 80])
+            
             tab.setStyle(TableStyle([
-                ('BACKGROUND',(0,0),(-1,0),colors.HexColor("#c0392b")),
-                ('TEXTCOLOR',(0,0),(-1,0),colors.whitesmoke),
-                ('ALIGN',(0,0),(-1,-1),'CENTER'),
-                ('GRID',(0,0),(-1,-1),0.5,colors.black),
-                ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#c0392b")), # Color rojo para egresos
+                ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), # Centrado vertical
+                ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+                # Estilo para la fila del total (la última)
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor("#f9ebea")),
+                ('LINEABOVE', (2, -1), (-1, -1), 1.5, colors.black),
             ]))
-            doc.build([Paragraph("Egresos", t_est), Spacer(1,20), tab])
-            messagebox.showinfo("Éxito", "PDF generado")
-        except Exception as e: messagebox.showerror("Error", str(e))
+            
+            elementos = [Paragraph("Reporte de Egresos", t_est), Spacer(1, 20), tab]
+            doc.build(elementos)
+            
+            messagebox.showinfo("Éxito", "PDF generado correctamente con el total de egresos.")
+        except Exception as e: 
+            messagebox.showerror("Error", f"No se pudo generar el PDF: {e}")

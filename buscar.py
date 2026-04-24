@@ -119,34 +119,45 @@ class BuscarFrame(ctk.CTkFrame):
             elementos = []
             estilos = getSampleStyleSheet()
             
+            # Estilo para el título
             estilo_titulo = ParagraphStyle('TituloCentrado', parent=estilos['Title'], alignment=TA_CENTER, spaceAfter=20)
             
-            elementos.append(Paragraph("Clientes", estilo_titulo))
-            elementos.append(Spacer(1, 12))
+            # Estilo para el contenido de las celdas (permite saltos de línea)
+            estilo_celda = ParagraphStyle('CeldaNormal', parent=estilos['Normal'], fontSize=9, alignment=TA_CENTER)
+            estilo_celda.wordWrap = 'CJK' # Permite romper palabras si son muy largas
+
+            elementos.append(Paragraph("Cliente | Servicios de Peluquería", estilo_titulo))
 
             texto = self.search_entry.get()
             dias = self.obtener_dias_filtro()
             datos_db = database.buscar_clientes_servicios(texto, dias)
 
-            # --- TABLA CON FECHA INCLUIDA ---
-            # Encabezados: Nro., Fecha, Nombre, Apellido, Servicio, Precio
-            encabezados = ["Nro.", "Fecha", "Nombre", "Apellido", "Servicio", "Precio"]
-            tabla_datos = [encabezados]
+            # Encabezados envueltos en Paragraph para que no fallen
+            encabezados = ["Nro", "Fecha", "Nombre", "Apellido", "Servicio", "Precio"]
+            tabla_datos = [[Paragraph(h, estilos['Helvetica-Bold'] if 'Helvetica-Bold' in estilos else estilos['Normal']) for h in encabezados]]
 
             for i, r in enumerate(datos_db, 1):
                 # r[1]=fecha, r[2]=nombre, r[3]=apellido, r[4]=servicio, r[5]=precio
-                tabla_datos.append([i, r[1], r[2], r[3], r[4], f"${r[5]:.2f}"])
+                # Convertimos cada dato a Paragraph para habilitar el ajuste automático de texto
+                tabla_datos.append([
+                    Paragraph(str(i), estilo_celda),
+                    Paragraph(str(r[1]), estilo_celda),
+                    Paragraph(str(r[2]), estilo_celda),
+                    Paragraph(str(r[3]), estilo_celda),
+                    Paragraph(str(r[4]), estilo_celda), # El servicio ahora saltará de línea si es largo
+                    Paragraph(f"${r[5]:.2f}", estilo_celda)
+                ])
 
-            # Ajuste de anchos de columna para incluir la fecha
-            t = Table(tabla_datos, colWidths=[30, 80, 90, 90, 160, 60])
+            # Mantenemos tus anchos de columna; el texto se ajustará a ellos
+            t = Table(tabla_datos, colWidths=[30, 80, 85, 85, 170, 50])
+            
             t.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#2c3e50")),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#ffc107")),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), # Centrado vertical para celdas con varias líneas
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#F3F3F3")),
             ]))
             
             elementos.append(t)
