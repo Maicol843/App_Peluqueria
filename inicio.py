@@ -116,8 +116,8 @@ class InicioFrame(ctk.CTkFrame):
             fg_color=color,
             text_color="white",
             hover=False, # Estático para información
-            width=200,
-            height=100,
+            width=150,
+            height=80,
             corner_radius=10
         )
         btn.grid(row=0, column=columna, padx=10, pady=10)

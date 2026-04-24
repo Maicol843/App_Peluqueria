@@ -291,25 +291,28 @@ def obtener_resumen_inicio():
     conexion = sqlite3.connect("peluqueria.db")
     cursor = conexion.cursor()
     
+    # Obtenemos el mes y año actual para el filtrado
+    mes_actual = datetime.now().strftime("%m")
+    anio_actual = datetime.now().strftime("%Y")
+    filtro_fecha = f"%/{mes_actual}/{anio_actual}"
+    
     # Total de clientes
     cursor.execute("SELECT COUNT(*) FROM clientes")
     t_cli = cursor.fetchone()[0] or 0
     
     # Total de ingresos (Suma de columna precio en tabla servicios)
-    cursor.execute("SELECT SUM(precio) FROM servicios")
+    cursor.execute("SELECT SUM(precio) FROM servicios WHERE fecha LIKE ?", (filtro_fecha,))
     t_ing = cursor.fetchone()[0] or 0.0
     
     # Total de egresos (Suma de columna importe en tabla egresos)
     try:
-        cursor.execute("SELECT SUM(importe) FROM egresos")
+        cursor.execute("SELECT SUM(importe) FROM egresos WHERE fecha LIKE ?", (filtro_fecha,))
         t_egr = cursor.fetchone()[0] or 0.0
-    except sqlite3.OperationalError:
-        t_egr = 0.0  # Por si la tabla egresos aún no existe
+    except:
+        t_egr = 0.0
         
     # Servicios del mes actual
-    from datetime import datetime
-    mes_actual = datetime.now().strftime("%m/%Y")
-    cursor.execute("SELECT COUNT(*) FROM servicios WHERE fecha LIKE ?", (f"%{mes_actual}%",))
+    cursor.execute("SELECT COUNT(*) FROM servicios WHERE fecha LIKE ?", (filtro_fecha,))
     s_mes = cursor.fetchone()[0] or 0
     
     conexion.close()
