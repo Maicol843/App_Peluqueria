@@ -64,13 +64,16 @@ class InicioFrame(ctk.CTkFrame):
         
         self.tabla_servicios = ttk.Treeview(
             self.frame_tabla, 
-            columns=("Servicio", "Cantidad"), 
+            columns=("Servicio", "Formula", "Cantidad"), 
             show="headings", 
             height=8
         )
         self.tabla_servicios.heading("Servicio", text="Servicio")
+        self.tabla_servicios.heading("Formula", text="Fórmula")
         self.tabla_servicios.heading("Cantidad", text="Veces realizado")
-        self.tabla_servicios.column("Servicio", width=200, anchor="w")
+        
+        self.tabla_servicios.column("Servicio", width=150, anchor="w")
+        self.tabla_servicios.column("Formula", width=150, anchor="w")
         self.tabla_servicios.column("Cantidad", width=100, anchor="center")
         self.tabla_servicios.pack(expand=True, fill="both")
 
@@ -137,8 +140,10 @@ class InicioFrame(ctk.CTkFrame):
         fin = inicio + self.items_por_pagina
         bloque = self.servicios_completos[inicio:fin]
 
-        for srv, cant in bloque:
-            self.tabla_servicios.insert("", "end", values=(srv, cant))
+        for srv, form, cant in bloque:
+            # Si la fórmula es None, ponemos un texto vacío
+            f_texto = form if form else ""
+            self.tabla_servicios.insert("", "end", values=(srv, f_texto, cant))
         
         # Actualizar etiqueta y botones
         total_paginas = (len(self.servicios_completos) - 1) // self.items_por_pagina + 1 if self.servicios_completos else 1

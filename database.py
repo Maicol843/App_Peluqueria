@@ -333,15 +333,15 @@ def obtener_resumen_inicio():
 def obtener_servicios_populares_mes():
     conexion = sqlite3.connect("peluqueria.db")
     cursor = conexion.cursor()
-    # Obtenemos el mes y año actual para filtrar
     mes_actual = datetime.now().strftime("%m")
     anio_actual = datetime.now().strftime("%Y")
     
+    # Agregamos s.formula a la consulta
     cursor.execute("""
-        SELECT servicio, COUNT(*) as cantidad 
+        SELECT servicio, formula, COUNT(*) as cantidad 
         FROM servicios 
         WHERE substr(fecha, 4, 2) = ? AND substr(fecha, 7, 4) = ?
-        GROUP BY servicio 
+        GROUP BY servicio, formula
         ORDER BY cantidad DESC
     """, (mes_actual, anio_actual))
     
