@@ -22,10 +22,18 @@ def crear_base_de_datos():
             cliente_id INTEGER,
             fecha TEXT NOT NULL,
             servicio TEXT NOT NULL,
+            formula TEXT,
             precio REAL NOT NULL,
             FOREIGN KEY (cliente_id) REFERENCES clientes (id)
         )
     ''')
+    
+    # Asegurar que la columna 'formula' existe para registros previos
+    try:
+        cursor.execute("ALTER TABLE servicios ADD COLUMN formula TEXT")
+    except sqlite3.OperationalError:
+        pass
+
     conexion.commit()
     conexion.close()
 
@@ -88,29 +96,35 @@ def eliminar_todos_los_clientes():
 
 # --- FUNCIONES DE SERVICIOS ---
 
-def registrar_servicio(cliente_id, fecha, servicio, precio):
+def registrar_servicio(cliente_id, fecha, servicio, formula, precio):
     conexion = sqlite3.connect("peluqueria.db")
     cursor = conexion.cursor()
-    cursor.execute("INSERT INTO servicios (cliente_id, fecha, servicio, precio) VALUES (?, ?, ?, ?)",
-                   (cliente_id, fecha, servicio, precio))
+    cursor.execute("INSERT INTO servicios (cliente_id, fecha, servicio, formula, precio) VALUES (?, ?, ?, ?, ?)",
+                   (cliente_id, fecha, servicio, formula, precio))
     conexion.commit()
     conexion.close()
 
 def obtener_servicios(cliente_id, busqueda=""):
     conexion = sqlite3.connect("peluqueria.db")
     cursor = conexion.cursor()
+    # Selección explícita para mantener el orden de las celdas
+    query = "SELECT id, fecha, servicio, formula, precio FROM servicios WHERE cliente_id = ?"
+    params = [cliente_id]
+    
     if busqueda:
-        cursor.execute("SELECT * FROM servicios WHERE cliente_id = ? AND servicio LIKE ?", (cliente_id, f"%{busqueda}%"))
-    else:
-        cursor.execute("SELECT * FROM servicios WHERE cliente_id = ?", (cliente_id,))
+        query += " AND (servicio LIKE ? OR formula LIKE ?)"
+        params.extend([f"%{busqueda}%", f"%{busqueda}%"])
+        
+    cursor.execute(query, params)
     datos = cursor.fetchall()
     conexion.close()
     return datos
 
-def actualizar_servicio(id_ser, fecha, servicio, precio):
+def actualizar_servicio(id_ser, fecha, servicio, formula, precio):
     conexion = sqlite3.connect("peluqueria.db")
     cursor = conexion.cursor()
-    cursor.execute("UPDATE servicios SET fecha=?, servicio=?, precio=? WHERE id=?", (fecha, servicio, precio, id_ser))
+    cursor.execute("UPDATE servicios SET fecha=?, servicio=?, formula=?, precio=? WHERE id=?", 
+                   (fecha, servicio, formula, precio, id_ser))
     conexion.commit()
     conexion.close()
 
@@ -345,7 +359,6 @@ def obtener_cumpleanios_hoy():
     
     cursor.execute("SELECT nombre, apellido, fecha_nacimiento FROM clientes")
     todos = cursor.fetchall()
-    
     cumpleaneros = []
     for c in todos:
         # c[2] es la fecha de nacimiento (dd/mm/aaaa)

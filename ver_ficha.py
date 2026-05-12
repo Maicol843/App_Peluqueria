@@ -45,32 +45,29 @@ class VerFichaFrame(ctk.CTkFrame):
         # --- TABLA DE SERVICIOS ---
         style = ttk.Style()
         style.configure("Ficha.Treeview", background="#2b2b2b", foreground="white", rowheight=35, font=("Arial", 12))
-        style.configure("Ficha.Treeview.Heading", font=("Arial", 13, "bold"))
         
-        self.tabla = ttk.Treeview(self, columns=("num", "fec", "ser", "pre"), show='headings', style="Ficha.Treeview")
+        # Se agrega "for" en columns y se define el heading
+        self.tabla = ttk.Treeview(self, columns=("num", "fec", "ser", "for", "pre"), show='headings', style="Ficha.Treeview")
         self.tabla.heading("num", text="Nro.")
         self.tabla.heading("fec", text="Fecha")
         self.tabla.heading("ser", text="Servicio")
+        self.tabla.heading("for", text="Fórmula")
         self.tabla.heading("pre", text="Precio ($)")
         
         self.tabla.column("num", width=50, anchor="center")
-        self.tabla.column("fec", width=150, anchor="center")
-        self.tabla.column("ser", width=300, anchor="center")
+        self.tabla.column("fec", width=120, anchor="center")
+        self.tabla.column("ser", width=200, anchor="center")
+        self.tabla.column("for", width=200, anchor="center")
         self.tabla.column("pre", width=100, anchor="center")
         self.tabla.pack(expand=True, fill="both", padx=40, pady=10)
 
-        # --- PAGINACIÓN VISUAL (Debajo de la tabla) ---
+        # Paginación
         self.pag_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.pag_frame.pack(pady=15)
-        
-        self.btn_prev = ctk.CTkButton(self.pag_frame, text="<", width=40, command=self.ant_pag)
-        self.btn_prev.pack(side="left", padx=10)
-        
+        self.btn_prev = ctk.CTkButton(self.pag_frame, text="<", width=40, command=self.ant_pag).pack(side="left", padx=10)
         self.lbl_pag = ctk.CTkLabel(self.pag_frame, text="Página 1 de 1", font=("Arial", 12, "bold"))
         self.lbl_pag.pack(side="left")
-        
-        self.btn_next = ctk.CTkButton(self.pag_frame, text=">", width=40, command=self.sig_pag)
-        self.btn_next.pack(side="left", padx=10)
+        self.btn_next = ctk.CTkButton(self.pag_frame, text=">", width=40, command=self.sig_pag).pack(side="left", padx=10)
 
         self.cargar_servicios()
 
@@ -79,11 +76,12 @@ class VerFichaFrame(ctk.CTkFrame):
         datos = database.obtener_servicios(self.cliente[0], self.search_ser.get())
         
         total_pag = max(1, (len(datos) + self.reg_por_pag - 1) // self.reg_por_pag)
-        if self.pagina_actual > total_pag: self.pagina_actual = total_pag
-        
         inicio = (self.pagina_actual - 1) * self.reg_por_pag
+        
         for i, s in enumerate(datos[inicio:inicio+self.reg_por_pag], start=inicio+1):
-            self.tabla.insert("", "end", iid=s[0], values=(i, s[2], s[3], f"{s[4]:.2f}"))
+            # Formateo seguro para evitar errores de NoneType
+            fec, ser, form, pre = s[1], s[2], (s[3] if s[3] else ""), (s[4] if s[4] is not None else 0.0)
+            self.tabla.insert("", "end", iid=s[0], values=(i, fec, ser, form, f"{pre:.2f}"))
         
         self.lbl_pag.configure(text=f"Página {self.pagina_actual} de {total_pag}")
 
@@ -106,7 +104,7 @@ class VerFichaFrame(ctk.CTkFrame):
     def abrir_modal_servicio(self, edit_data=None):
         modal = ctk.CTkToplevel(self)
         modal.title("Servicio")
-        modal.geometry("350x400")
+        modal.geometry("350x450")
         modal.attributes("-topmost", True)
         modal.grab_set()
 
@@ -115,21 +113,25 @@ class VerFichaFrame(ctk.CTkFrame):
         ent_fec.pack(pady=10)
         ent_ser = ctk.CTkEntry(modal, placeholder_text="Servicio", width=250)
         ent_ser.pack(pady=10)
+        # Campo Fórmula sin el texto "(opcional)"
+        ent_for = ctk.CTkEntry(modal, placeholder_text="Fórmula", width=250)
+        ent_for.pack(pady=10)
         ent_pre = ctk.CTkEntry(modal, placeholder_text="Precio", width=250)
         ent_pre.pack(pady=10)
 
         if edit_data:
             ent_fec.insert(0, edit_data[1])
             ent_ser.insert(0, edit_data[2])
-            ent_pre.insert(0, str(edit_data[3]).replace('$', ''))
+            ent_for.insert(0, edit_data[3])
+            ent_pre.insert(0, str(edit_data[4]))
 
         def guardar():
             try:
                 precio = float(ent_pre.get())
                 if edit_data:
-                    database.actualizar_servicio(edit_data[0], ent_fec.get(), ent_ser.get(), precio)
+                    database.actualizar_servicio(edit_data[0], ent_fec.get(), ent_ser.get(), ent_for.get(), precio)
                 else:
-                    database.registrar_servicio(self.cliente[0], ent_fec.get(), ent_ser.get(), precio)
+                    database.registrar_servicio(self.cliente[0], ent_fec.get(), ent_ser.get(), ent_for.get(), precio)
                 modal.destroy()
                 self.cargar_servicios()
             except ValueError: 
@@ -139,11 +141,10 @@ class VerFichaFrame(ctk.CTkFrame):
 
     def editar_servicio(self):
         sel = self.tabla.selection()
-        if not sel:
-            messagebox.showwarning("Atención", "Seleccione un servicio.")
-            return
+        if not sel: return
         v = self.tabla.item(sel)['values']
-        self.abrir_modal_servicio(edit_data=(sel[0], v[1], v[2], v[3]))
+        # Se pasan los 5 valores: id, fec, ser, formula, precio
+        self.abrir_modal_servicio(edit_data=(sel[0], v[1], v[2], v[3], v[4]))
 
     def eliminar_servicio(self):
         sel = self.tabla.selection()
