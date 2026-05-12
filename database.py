@@ -146,24 +146,22 @@ def buscar_clientes_servicios(texto="", dias=None):
     conexion = sqlite3.connect("peluqueria.db")
     cursor = conexion.cursor()
     
-    # Query base que une ambas tablas
+    # Agregamos s.formula a la consulta
     query = """
-        SELECT s.id, s.fecha, c.nombre, c.apellido, s.servicio, s.precio
+        SELECT s.id, s.fecha, c.nombre, c.apellido, s.servicio, s.formula, s.precio
         FROM servicios s
         JOIN clientes c ON s.cliente_id = c.id
-        WHERE (c.nombre LIKE ? OR c.apellido LIKE ? OR s.servicio LIKE ?)
+        WHERE (c.nombre LIKE ? OR c.apellido LIKE ? OR s.servicio LIKE ? OR s.formula LIKE ?)
     """
-    params = [f"%{texto}%", f"%{texto}%", f"%{texto}%"]
+    params = [f"%{texto}%", f"%{texto}%", f"%{texto}%", f"%{texto}%"]
 
     if dias is not None:
-        # CORRECCIÓN LÓGICA: Convertimos DD/MM/YYYY a YYYY-MM-DD para que SQLite calcule bien los días
         query += """ 
             AND date(substr(s.fecha,7,4) || '-' || substr(s.fecha,4,2) || '-' || substr(s.fecha,1,2)) 
             >= date('now', 'localtime', ?)
         """
         params.append(f"-{dias} days")
 
-    # Ordenar por fecha más reciente
     query += " ORDER BY substr(s.fecha,7,4) DESC, substr(s.fecha,4,2) DESC, substr(s.fecha,1,2) DESC"
 
     cursor.execute(query, params)

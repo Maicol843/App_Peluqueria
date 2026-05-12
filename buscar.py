@@ -40,15 +40,18 @@ class BuscarFrame(ctk.CTkFrame):
         self.btn_pdf.pack(side="left", padx=10)
 
         # --- TABLA EN INTERFAZ ---
-        self.tabla = ttk.Treeview(self, columns=("num", "fec", "nom", "ape", "ser", "pre"), show='headings')
+        self.tabla = ttk.Treeview(self, columns=("num", "fec", "nom", "ape", "ser", "for", "pre"), show='headings')
         self.tabla.heading("num", text="Nro.")
         self.tabla.heading("fec", text="Fecha")
         self.tabla.heading("nom", text="Nombre")
         self.tabla.heading("ape", text="Apellido")
         self.tabla.heading("ser", text="Servicio")
+        self.tabla.heading("for", text="Fórmula")
         self.tabla.heading("pre", text="Precio")
         
-        for col, width in zip(self.tabla["columns"], [40, 100, 120, 120, 200, 80]):
+        # Ajuste de anchos para acomodar la nueva columna
+        anchos = [35, 90, 100, 100, 150, 150, 80]
+        for col, width in zip(self.tabla["columns"], anchos):
             self.tabla.column(col, width=width, anchor="center")
         
         self.tabla.pack(expand=True, fill="both", padx=40, pady=10)
@@ -57,14 +60,10 @@ class BuscarFrame(ctk.CTkFrame):
         self.pag_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.pag_frame.pack(pady=15)
         
-        self.btn_prev = ctk.CTkButton(self.pag_frame, text="<", width=40, command=self.ant_pag)
-        self.btn_prev.pack(side="left", padx=10)
-        
+        self.btn_prev = ctk.CTkButton(self.pag_frame, text="<", width=40, command=self.ant_pag).pack(side="left", padx=10)
         self.lbl_pag = ctk.CTkLabel(self.pag_frame, text="Página 1 de 1", font=("Arial", 12, "bold"))
         self.lbl_pag.pack(side="left")
-        
-        self.btn_next = ctk.CTkButton(self.pag_frame, text=">", width=40, command=self.sig_pag)
-        self.btn_next.pack(side="left", padx=10)
+        self.btn_next = ctk.CTkButton(self.pag_frame, text=">", width=40, command=self.sig_pag).pack(side="left", padx=10)
 
         self.cargar_datos()
 
@@ -76,21 +75,24 @@ class BuscarFrame(ctk.CTkFrame):
         return None
 
     def cargar_datos(self):
-        for item in self.tabla.get_children(): 
-            self.tabla.delete(item)
+        for item in self.tabla.get_children(): self.tabla.delete(item)
         
         texto = self.search_entry.get()
         dias = self.obtener_dias_filtro()
+        # Nota: database.buscar_clientes_servicios debe devolver la fórmula ahora
         datos = database.buscar_clientes_servicios(texto, dias)
         
         total_pag = max(1, (len(datos) + self.reg_por_pag - 1) // self.reg_por_pag)
         if self.pagina_actual > total_pag: self.pagina_actual = total_pag
-
         self.lbl_pag.configure(text=f"Página {self.pagina_actual} de {total_pag}")
         
         inicio = (self.pagina_actual - 1) * self.reg_por_pag
         for i, r in enumerate(datos[inicio:inicio+self.reg_por_pag], start=inicio+1):
-            self.tabla.insert("", "end", values=(i, r[1], r[2], r[3], r[4], f"${r[5]:.2f}"))
+            # r[4] es Servicio, r[5] es Fórmula, r[6] es Precio
+            # Manejamos posibles valores None para que no rompan el formato
+            formula = r[5] if r[5] else ""
+            precio = f"${r[6]:.2f}" if r[6] is not None else "$0.00"
+            self.tabla.insert("", "end", values=(i, r[1], r[2], r[3], r[4], formula, precio))
 
     def reset_y_cargar(self):
         self.pagina_actual = 1
@@ -113,56 +115,45 @@ class BuscarFrame(ctk.CTkFrame):
     def generar_pdf_busqueda(self):
         path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
         if not path: return
-
         try:
             doc = SimpleDocTemplate(path, pagesize=A4)
             elementos = []
             estilos = getSampleStyleSheet()
-            
-            # Estilo para el título
             estilo_titulo = ParagraphStyle('TituloCentrado', parent=estilos['Title'], alignment=TA_CENTER, spaceAfter=20)
-            
-            # Estilo para el contenido de las celdas (permite saltos de línea)
-            estilo_celda = ParagraphStyle('CeldaNormal', parent=estilos['Normal'], fontSize=9, alignment=TA_CENTER)
-            estilo_celda.wordWrap = 'CJK' # Permite romper palabras si son muy largas
+            estilo_celda = ParagraphStyle('CeldaNormal', parent=estilos['Normal'], fontSize=8, alignment=TA_CENTER)
+            estilo_celda.wordWrap = 'CJK'
 
-            elementos.append(Paragraph("Cliente | Servicios de Peluquería", estilo_titulo))
+            elementos.append(Paragraph("Reporte General de Servicios", estilo_titulo))
 
-            texto = self.search_entry.get()
-            dias = self.obtener_dias_filtro()
-            datos_db = database.buscar_clientes_servicios(texto, dias)
+            datos_db = database.buscar_clientes_servicios(self.search_entry.get(), self.obtener_dias_filtro())
 
-            # Encabezados envueltos en Paragraph para que no fallen
-            encabezados = ["Nro", "Fecha", "Nombre", "Apellido", "Servicio", "Precio"]
-            tabla_datos = [[Paragraph(h, estilos['Helvetica-Bold'] if 'Helvetica-Bold' in estilos else estilos['Normal']) for h in encabezados]]
+            # Encabezados del PDF con la nueva columna
+            encabezados = ["Nro", "Fecha", "Nombre", "Apellido", "Servicio", "Fórmula", "Precio"]
+            tabla_datos = [[Paragraph(f"<b>{h}</b>", estilo_celda) for h in encabezados]]
 
             for i, r in enumerate(datos_db, 1):
-                # r[1]=fecha, r[2]=nombre, r[3]=apellido, r[4]=servicio, r[5]=precio
-                # Convertimos cada dato a Paragraph para habilitar el ajuste automático de texto
                 tabla_datos.append([
                     Paragraph(str(i), estilo_celda),
                     Paragraph(str(r[1]), estilo_celda),
                     Paragraph(str(r[2]), estilo_celda),
                     Paragraph(str(r[3]), estilo_celda),
-                    Paragraph(str(r[4]), estilo_celda), # El servicio ahora saltará de línea si es largo
-                    Paragraph(f"${r[5]:.2f}", estilo_celda)
+                    Paragraph(str(r[4]), estilo_celda),
+                    Paragraph(str(r[5] if r[5] else ""), estilo_celda),
+                    Paragraph(f"${r[6]:.2f}" if r[6] is not None else "$0.00", estilo_celda)
                 ])
 
-            # Mantenemos tus anchos de columna; el texto se ajustará a ellos
-            t = Table(tabla_datos, colWidths=[30, 80, 85, 85, 170, 50])
-            
+            # Ajuste de anchos de columna para el PDF (A4 tiene ~540 puntos de ancho útil)
+            t = Table(tabla_datos, colWidths=[25, 65, 75, 75, 110, 110, 60])
             t.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#ffc107")),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), # Centrado vertical para celdas con varias líneas
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#F3F3F3")),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
             ]))
-            
             elementos.append(t)
             doc.build(elementos)
-            messagebox.showinfo("Éxito", "Reporte descargado con éxito.")
-            
+            messagebox.showinfo("Éxito", "Reporte generado correctamente.")
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo generar el PDF: {e}")

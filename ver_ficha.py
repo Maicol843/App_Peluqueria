@@ -172,7 +172,7 @@ class VerFichaFrame(ctk.CTkFrame):
             
             # Estilo para las celdas de la tabla (permite ajuste de línea)
             estilo_celda = ParagraphStyle('CeldaTabla', parent=estilos['Normal'], alignment=TA_CENTER, fontSize=10)
-            estilo_celda.wordWrap = 'CJK' # Permite que el texto largo salte de línea
+            estilo_celda.wordWrap = 'CJK' 
 
             # 1. TÍTULOS Y CABECERA
             elementos.append(Paragraph("Historial de Servicios", estilo_titulo))
@@ -181,29 +181,36 @@ class VerFichaFrame(ctk.CTkFrame):
             linea_contacto = f"{self.cliente[3]}  |  {self.cliente[4]}  |  {self.cliente[5]}"
             elementos.append(Paragraph(linea_contacto, estilo_datos))
             
-            # 2. TABLA DE SERVICIOS
-            # Encabezados envueltos en Paragraph para consistencia
-            encabezados = ["Nro.", "Fecha", "Servicio", "Precio"]
+            # 2. TABLA DE SERVICIOS (Corregida con celda Fórmula)
+            encabezados = ["Nro.", "Fecha", "Servicio", "Fórmula", "Precio"]
             datos_tabla = [[Paragraph(f"<b>{h}</b>", estilo_celda) for h in encabezados]]
             
+            # database.obtener_servicios devuelve: (id, fecha, servicio, formula, precio)
             servicios = database.obtener_servicios(self.cliente[0])
+            
             for i, s in enumerate(servicios, 1):
-                # s[2]=fecha, s[3]=servicio, s[4]=precio
+                fec = str(s[1])
+                ser = str(s[2])
+                form = str(s[3]) if s[3] else "" # Manejo de Nones en fórmula
+                pre = f"${s[4]:.2f}"
+                
                 datos_tabla.append([
                     Paragraph(str(i), estilo_celda),
-                    Paragraph(str(s[2]), estilo_celda),
-                    Paragraph(str(s[3]), estilo_celda), # El servicio ahora se ajustará al ancho
-                    Paragraph(f"${s[4]:.2f}", estilo_celda)
+                    Paragraph(fec, estilo_celda),
+                    Paragraph(ser, estilo_celda),
+                    Paragraph(form, estilo_celda),
+                    Paragraph(pre, estilo_celda)
                 ])
             
-            # Definición de anchos de columna
-            t = Table(datos_tabla, colWidths=[35, 90, 255, 90])
+            # Definición de anchos de columna para A4 (total ~540 pts)
+            # Nro(30), Fecha(80), Servicio(150), Fórmula(180), Precio(80)
+            t = Table(datos_tabla, colWidths=[30, 80, 150, 180, 80])
             
             t.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#20c997")),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), # Centrado vertical importante para multilínea
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'), 
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
                 ('BACKGROUND', (0, 1), (-1, -1), colors.white),
             ]))
